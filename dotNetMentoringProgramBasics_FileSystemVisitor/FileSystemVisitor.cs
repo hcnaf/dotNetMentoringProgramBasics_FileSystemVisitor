@@ -6,24 +6,15 @@ namespace dotNetMentoringProgramBasics_FileSystemVisitor
     {
         private string _directory;
         private string _fileOrDirToFind;
-        private Func<string, bool> _filter;
-        public FileSystemVisitor(string path, string fileOrDirToFind = null, Func<string, bool> filter = null)
+        private Func<string, bool>[] _filters;
+        public FileSystemVisitor(string path, string fileOrDirToFind = null, params Func<string, bool>[] filter)
         {
             _directory = path ?? throw new ArgumentNullException(nameof(path));
             _fileOrDirToFind = fileOrDirToFind;
-            _filter = filter;
+            _filters = filter;
         }
 
-        public IEnumerable<string> GetPaths()
-        {
-            Started();
-
-            var res = GetPaths(_directory);
-
-            Finished();
-
-            return res;
-        }
+        public IEnumerable<string> GetPaths() => GetPaths(_directory);
 
         public event Action Started = delegate { };
         public event Action Finished = delegate { };
@@ -31,40 +22,25 @@ namespace dotNetMentoringProgramBasics_FileSystemVisitor
         public event Action FileFound = delegate { };
         public event Action DirectoryFound = delegate { };
 
-        public event Action FilteredFileFound = delegate { };
-        public event Action FilteredDirectoryFound = delegate { };
-
-        private IEnumerable<string> GetPaths(string directory)
+        private IEnumerable<string> GetPaths(string directory, int depth = 0)
         {
-            foreach (var file in Directory.GetFiles(directory))
+            foreach (var file in Directory.GetFiles(directory).Where(file => _filters?.All(x => x(file)) ?? false))
             {
-                if (file.EndsWith(_fileOrDirToFind))
-                    FileFound();
+                if (file?.EndsWith(_fileOrDirToFind) ?? false)
+                        FileFound();
 
-                if (_filter(file))
-                {
-                    if (file.EndsWith(_fileOrDirToFind))
-                        FilteredFileFound();
-
-                    yield return file;
-                }
+                yield return Path.GetFileName(file);
             }
 
-            foreach (var dir in Directory.GetDirectories(directory))
+            foreach (var dir in Directory.GetDirectories(directory).Where(dir => _filters?.All(x => x(dir)) ?? false))
             {
-                if (dir.EndsWith(_fileOrDirToFind))
-                    DirectoryFound();
+                if (dir?.EndsWith(_fileOrDirToFind) ?? false)
+                        DirectoryFound();
 
-                if (_filter(dir))
-                {
-                    if (dir.EndsWith(_fileOrDirToFind))
-                        FilteredDirectoryFound();
+                yield return new DirectoryInfo(Path.GetDirectoryName(dir)).Name;
 
-                    yield return dir;
-                }
-
-                foreach(var path in GetPaths(dir))
-                    yield return path;
+                foreach(var path in GetPaths(dir, depth + 1))
+                    yield return String.Concat(Enumerable.Repeat("  ", depth)) + path;
             }
         }
 

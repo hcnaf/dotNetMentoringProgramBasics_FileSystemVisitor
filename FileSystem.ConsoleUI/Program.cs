@@ -1,12 +1,20 @@
 ﻿#pragma warning disable
 
 using dotNetMentoringProgramBasics_FileSystemVisitor;
+using System.Linq.Expressions;
 
-var visitor = new FileSystemVisitor("../../../../../", fileOrDirToFind: "FileSystemVisitor.cs", filter: x => !x.Contains(".git"));
-visitor.Started += OnStart;
-visitor.Finished += OnFinish;
-visitor.FileFound += OnFileFound;
-visitor.FilteredFileFound += OnFilteredFileFound;
+Console.Write("Enter path: ");
+var path = Console.ReadLine();
+
+Console.Write("File to find: ");
+var fileToFind = Console.ReadLine();
+
+Console.Write("Files to except: ");
+var pathToExcept = Console.ReadLine();
+
+Func<string, Func<string, bool>> filterExpression = fileToExcept => (x => !x.Contains(fileToExcept));
+
+var visitor = new FileSystemVisitor(path, fileToFind, pathToExcept.Split(' ').Select(str => filterExpression(str)).ToArray());
 
 foreach(var dir in visitor.GetPaths())
 {
